@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jogo da Divisibilidade</title>
+<style>
+  :root{
+    --bg:#0b132b;
+    --card:#1c2541;
+    --accent:#5bc0be;
+    --accent2:#f6ae2d;
+    --text:#eef4f8;
+    --bad:#ef476f;
+    --ok:#06d6a0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0b132b 0%, #1b2a4a 100%);font-family:system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji','Segoe UI Emoji', 'Segoe UI Symbol'; color:var(--text);}
+  .container{max-width:980px;margin:0 auto;padding:24px}
+  header{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:16px}
+  h1{margin:0;font-size:clamp(20px,4vw,36px);letter-spacing:.5px}
+  .mode{
+    display:flex;gap:8px;flex-wrap:wrap
+  }
+  button, select{
+    background:var(--accent);
+    color:#012a36;
+    border:none;border-radius:14px;
+    padding:10px 14px;font-weight:700;cursor:pointer;
+    transition:transform .05s ease, filter .15s ease;
+  }
+  button:hover{filter:brightness(1.06)}
+  button:active{transform:scale(.98)}
+  .card{
+    background:var(--card);border:1px solid #22345d; border-radius:20px; padding:18px;
+    box-shadow:0 10px 20px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .grid{display:grid;grid-template-columns:1fr;gap:16px}
+  @media (min-width:900px){
+    .grid{grid-template-columns: 1.2fr .8fr}
+  }
+  .number{
+    font-size: clamp(40px,7vw,84px); font-weight:900; letter-spacing:1px;
+    text-align:center; margin:10px 0; color:#fff;
+  }
+  .tag{display:inline-block;background:#20355e;color:#cde7ff;padding:4px 10px;border-radius:999px;font-size:12px;margin-right:6px}
+  .choices{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px}
+  .choices button{background:#e8f1ff;color:#002a4a}
+  .choices button.correct{background:var(--ok);color:#073b3a}
+  .choices button.wrong{background:var(--bad);color:#fff}
+  .feedback{min-height:32px;font-weight:800;margin-top:8px}
+  .explain{background:#10203f;border:1px dashed #2c4b87;border-radius:14px;padding:12px;color:#cfe7ff;line-height:1.5}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-weight:700}
+  .pill.ok{background:var(--ok);color:#083;}.pill.bad{background:var(--bad);color:#320}
+  .score{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .score span{background:#0e1f3f;padding:8px 12px;border-radius:12px;border:1px solid #243b70}
+  .kbd{background:#11264d;border:1px solid #234; padding:0 6px;border-radius:6px}
+  .hint{font-size:14px;color:#d3f5ff}
+  .rules{display:grid;gap:8px}
+  .rules .rule{background:#0f2246;border:1px solid #22457a;border-radius:14px;padding:10px}
+  .footer{opacity:.8;font-size:12px;margin-top:8px}
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎮 Jogo da Divisibilidade</h1>
+      <div class="mode">
+        <select id="select-mode" title="Modo de jogo">
+          <option value="pratica">Modo Prática</option>
+          <option value="desafio">Modo Desafio (60s)</option>
+        </select>
+        <select id="select-regra" title="Regra de estudo">
+          <option value="2">Regra do 2</option>
+          <option value="3">Regra do 3</option>
+          <option value="5">Regra do 5</option>
+          <option value="9">Regra do 9</option>
+          <option value="10">Termina em 0</option>
+          <option value="100">Termina em 00</option>
+          <option value="1000">Termina em 000</option>
+          <option value="mix" selected>Mix de Regras</option>
+        </select>
+        <button id="btn-new">Novo número</button>
+        <button id="btn-hint">💡 Dica</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <div class="tag">Número</div>
+        <div class="number" id="num">—</div>
+
+        <div class="tag">Pergunta</div>
+        <div style="font-size:18px" id="question">Este número é divisível por…?</div>
+
+        <div class="choices" id="choices"></div>
+        <div class="feedback" id="feedback"></div>
+        <div class="explain" id="explain">
+          Toque em <span class="kbd">Novo número</span> para começar! No modo <b>Prática</b>, você escolhe/divide com calma. No <b>Desafio</b>, marque pontos em 60s.
+        </div>
+
+        <div class="score" style="margin-top:10px">
+          <span>✅ Acertos: <b id="acertos">0</b></span>
+          <span>❌ Erros: <b id="erros">0</b></span>
+          <span>⭐ Pontos: <b id="pontos">0</b></span>
+          <span id="timerwrap" style="display:none">⏱️ Tempo: <b id="timer">60</b>s</span>
+        </div>
+      </section>
+
+      <aside class="card">
+        <h3 style="margin-top:0">📘 Regras rápidas</h3>
+        <div class="rules">
+          <div class="rule"><b>2</b> → é par (termina em 0,2,4,6,8).</div>
+          <div class="rule"><b>3</b> → soma dos dígitos dá 3, 6, 9… (múltiplo de 3).</div>
+          <div class="rule"><b>5</b> → termina em 0 ou 5.</div>
+          <div class="rule"><b>9</b> → soma dos dígitos dá 9, 18, 27… (múltiplo de 9).</div>
+          <div class="rule"><b>10</b> → termina em 0.</div>
+          <div class="rule"><b>100</b> → termina em 00.</div>
+          <div class="rule"><b>1000</b> → termina em 000.</div>
+        </div>
+        <p class="hint">Dica: some os dígitos apertando <span class="kbd">Dica</span> no 3 e 9.</p>
+        <p class="footer">Labubu Produtions</p>
+      </aside>
+    </div>
+  </div>
+
+<script>
+const acertosEl = document.getElementById('acertos');
+const errosEl = document.getElementById('erros');
+const pontosEl = document.getElementById('pontos');
+const numEl = document.getElementById('num');
+const questionEl = document.getElementById('question');
+const choicesEl = document.getElementById('choices');
+const feedbackEl = document.getElementById('feedback');
+const explainEl = document.getElementById('explain');
+const timerWrap = document.getElementById('timerwrap');
+const timerEl = document.getElementById('timer');
+
+const modeSel = document.getElementById('select-mode');
+const ruleSel = document.getElementById('select-regra');
+
+const btnNew = document.getElementById('btn-new');
+const btnHint = document.getElementById('btn-hint');
+
+let acertos = 0, erros = 0, pontos = 0;
+let current = { n: null, target: null, options: [], rule: 'mix' };
+let timerId = null, timeLeft = 60;
+
+const RULES = {
+  '2': { label: '2', ask: 'É divisível por 2?', check: (n)=> n % 2 === 0, hint: (n)=> `Olhe o dígito final: <b>${String(n).slice(-1)}</b>. Se termina em 0,2,4,6,8 é par.` },
+  '3': { label: '3', ask: 'É divisível por 3?', check: (n)=> sumDigits(n) % 3 === 0, hint: (n)=> `Some os dígitos: <b>${digits(n).join(' + ')}</b> = <b>${sumDigits(n)}</b>. Se a soma for múltipla de 3, serve!` },
+  '5': { label: '5', ask: 'É divisível por 5?', check: (n)=> ['0','5'].includes(String(n).slice(-1)), hint: (n)=> `Veja o final: <b>${String(n).slice(-1)}</b>. Se termina em 0 ou 5, vale.` },
+  '9': { label: '9', ask: 'É divisível por 9?', check: (n)=> sumDigits(n) % 9 === 0, hint: (n)=> `Some os dígitos: <b>${digits(n).join(' + ')}</b> = <b>${sumDigits(n)}</b>. Se a soma é múltipla de 9, vale!` },
+  '10': { label: '10', ask: 'É divisível por 10?', check: (n)=> String(n).endsWith('0'), hint: (n)=> `Termina em <b>${String(n).slice(-1)}</b>? Se for 0 → sim.` },
+  '100': { label: '100', ask: 'É divisível por 100?', check: (n)=> String(n).endsWith('00'), hint: (n)=> `Termina em <b>${String(n).slice(-2)}</b>? Se for 00 → sim.` },
+  '1000': { label: '1000', ask: 'É divisível por 1000?', check: (n)=> String(n).endsWith('000'), hint: (n)=> `Termina em <b>${String(n).slice(-3)}</b>? Se for 000 → sim.` }
+};
+
+function digits(n){ return String(n).split('').map(x=>+x); }
+function sumDigits(n){ return digits(n).reduce((a,b)=>a+b,0); }
+
+function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+
+function newRound(){
+  const mode = modeSel.value;
+  const ruleChoice = ruleSel.value;
+  const ruleKey = (ruleChoice === 'mix') ? pickRandomKey() : ruleChoice;
+
+
+  let n = randInt(2, 99999);
+
+  if (Math.random()<0.5){
+    n = makeMatchRule(ruleKey);
+  }
+
+  current.n = n;
+  current.rule = ruleKey;
+  numEl.textContent = n.toLocaleString('pt-BR');
+  questionEl.textContent = RULES[ruleKey].ask;
+
+  const opts = buildOptions(ruleKey);
+  current.options = opts;
+
+  // Render choices
+  renderChoices(opts, ruleKey);
+
+  feedbackEl.innerHTML = '';
+  explainEl.innerHTML = 'Responda e veja a explicação aparecer aqui 👇';
+}
+
+function buildOptions(ruleKey){
+  return ['Sim','Não','Pular'];
+}
+
+function renderChoices(opts, ruleKey){
+  choicesEl.innerHTML = '';
+  opts.forEach(label=>{
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.addEventListener('click', ()=> onAnswer(label, ruleKey));
+    choicesEl.appendChild(btn);
+  });
+}
+
+function onAnswer(label, ruleKey){
+  if (label==='Pular'){ explain('⏭️ Você pulou. Tente o próximo!'); newRound(); return; }
+
+  const ok = RULES[ruleKey].check(current.n);
+  const children = [...choicesEl.children];
+  children.forEach(b=>b.disabled=true);
+
+  if ((ok && label==='Sim') || (!ok && label==='Não')){
+    children.find(b=>b.textContent===label).classList.add('correct');
+    acertos++; pontos += 10;
+    feedbackEl.innerHTML = '✅ <span class="pill ok">Acertou!</span>';
+  }else{
+    children.find(b=>b.textContent===label).classList.add('wrong');
+    erros++; pontos = Math.max(0, pontos-3);
+    feedbackEl.innerHTML = '❌ <span class="pill bad">Ops…</span>';
+  }
+  acertosEl.textContent = acertos;
+  errosEl.textContent = erros;
+  pontosEl.textContent = pontos;
+
+  // explanation
+  showExplanation(ruleKey, current.n, ok);
+
+  // next
+  setTimeout(()=>{ newRound(); }, 1200);
+}
+
+function showExplanation(ruleKey, n, ok){
+  const r = RULES[ruleKey];
+  let msg = r.hint(n);
+  const verdict = ok ? '<b class="pill ok">SIM</b>' : '<b class="pill bad">NÃO</b>';
+  explainEl.innerHTML = `Regra do <b>${r.label}</b>: ${msg}<br>Então, <b>${n.toLocaleString('pt-BR')}</b> é divisível por ${r.label}? ${verdict}.`;
+}
+
+function startTimer(){
+  stopTimer();
+  timeLeft = 60;
+  timerWrap.style.display = 'inline-block';
+  timerEl.textContent = timeLeft;
+  timerId = setInterval(()=>{
+    timeLeft--;
+    timerEl.textContent = timeLeft;
+    if (timeLeft<=0){
+      stopTimer();
+      explain('⏱️ Tempo esgotado! Pontuação final: <b>'+pontos+'</b>. Clique em "Novo número" para jogar de novo.');
+      [...choicesEl.children].forEach(b=>b.disabled=true);
+    }
+  },1000);
+}
+function stopTimer(){
+  if (timerId){ clearInterval(timerId); timerId=null; }
+  timerWrap.style.display = (modeSel.value==='desafio') ? 'inline-block' : 'none';
+}
+
+btnNew.addEventListener('click', ()=>{
+  if (modeSel.value==='desafio'){ startTimer(); }
+  newRound();
+});
+modeSel.addEventListener('change', ()=>{
+  if (modeSel.value==='desafio'){ startTimer(); } else { stopTimer(); }
+});
+btnHint.addEventListener('click', ()=>{
+  const r = RULES[current.rule]; if(!r || current.n===null){ return; }
+  explain(r.hint(current.n));
+});
+
+function explain(html){ explainEl.innerHTML = html; }
+
+function pickRandomKey(){
+  const keys = Object.keys(RULES);
+  return keys[Math.floor(Math.random()*keys.length)];
+}
+
+function makeMatchRule(ruleKey){
+  // Create a number that satisfies the rule
+  if (ruleKey==='2'){
+    // ensure even
+    let base = randInt(1, 9999)*10;
+    const evenEnd = ['0','2','4','6','8'][randInt(0,4)];
+    return +(String(base).slice(0,-1) + evenEnd);
+  }
+  if (ruleKey==='5'){
+    let base = randInt(1, 9999)*10;
+    const end = ['0','5'][randInt(0,1)];
+    return +(String(base).slice(0,-1) + end);
+  }
+  if (ruleKey==='10'){ return randInt(1, 9999)*10; }
+  if (ruleKey==='100'){ return randInt(1, 999)*100; }
+  if (ruleKey==='1000'){ return randInt(1, 99)*1000; }
+  if (ruleKey==='3' || ruleKey==='9'){
+    // generate digits until sum % target == 0
+    const target = (ruleKey==='3') ? 3 : 9;
+    let n = randInt(10, 99999);
+    // adjust by changing last digit to fit rule
+    const s = sumDigits(n);
+    const mod = s % target;
+    let add = (target - mod) % target;
+    // try to modify last digit safely
+    let str = String(n);
+    let last = +str.slice(-1);
+    last = (last + add) % 10;
+    str = str.slice(0,-1) + last;
+    return +str;
+  }
+  return randInt(2, 99999);
+}
+
+// init
+</script>
+</body>
+</html>
